@@ -44,24 +44,32 @@ class Graph () {
     this
   }
 
-  def createGraphFromText(text: String): Unit = {
+  def createGraphFromText(text: String): Boolean = {
 
-    for (e <- text.split("\n")) {
-      val l = e.split(" ").map(_.toInt)
+    try {
+      for (e <- text.split("\n")) {
 
-      // create or get an existing node
-      val nodea = this.getNode(l(0)).getOrElse(new Node(l(0)))
-      val nodeb = this.getNode(l(1)).getOrElse(new Node(l(1)))
+        val l = e.split(" ").map(_.toInt)
 
-      // add the edges and save the node
-      nodea.addNeighbor(nodeb)
-      nodeb.addNeighbor(nodea)
-      this.addNode(nodea)
-      this.addNode(nodeb)
+        // create or get an existing node
+        val nodea = this.getNode(l(0)).getOrElse(new Node(l(0)))
+        val nodeb = this.getNode(l(1)).getOrElse(new Node(l(1)))
+
+        // add the edges and save the node
+        nodea.addNeighbor(nodeb)
+        nodeb.addNeighbor(nodea)
+        this.addNode(nodea)
+        this.addNode(nodeb)
+      }
+      // amount of nodes.
+      println(s"Loaded graph with ${this.nodes.size} nodes")
+      return true
+    } catch {
+        case _ => {
+          println("Error reading from graph")
+          return false
+        }
     }
-
-    // amount of nodes.
-    println(s"Loaded graph with ${this.nodes.size} nodes")
   }
 
   // find the shortest paths and calculate the farness

@@ -19,16 +19,19 @@ class WebService(implicit fm: Materializer, system: ActorSystem) extends Directi
   def route =
     get {
       pathSingleSlash {
-        complete("Welcome to websocket server")
+        getFromResource("web/index.html")
       } ~
         // Scala-JS puts them in the root of the resource directory per default,
         // so that's where we pick them up
         //path("frontend-launcher.js")(getFromResource("frontend-launcher.js")) ~
         //path("frontend-fastopt.js")(getFromResource("frontend-fastopt.js")) ~
-        path("chat") {
-          parameter('name) { name =>
-            handleWebSocketMessages(websocketChatFlow(sender = name))
+        path("calculate") {
+          parameter('id) { id =>
+            handleWebSocketMessages(websocketChatFlow(sender = id))
           }
+        } ~
+        path("graph") {
+          getFromResource("web/ws.html")
         }
     } ~
       getFromResourceDirectory("web")

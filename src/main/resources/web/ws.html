@@ -30,32 +30,30 @@
 
 </head>
 <body>
-<div id="content">
-    <div id="left">
-        <div id="graph_div">
-            <form>
-                Insert the graph to be calculated: <br>
-                <textarea rows="30" cols="50" id="graph"></textarea><br>
-                <button id="bt_send" type="button">Calculate Centrality</button>
-                <button id="bt_graph" type="button">Insert default graph</button>
-                <button id="bt_draw" type="button">Draw Graph</button>
-            </form>
+    <div id="content">
+        <div id="left">
+            <div id="graph_div">
+                <form>
+                    Insert the graph to be calculated: <br>
+                    <textarea rows="30" cols="50" id="graph"></textarea><br>
+                    <button id="bt_send" type="button">Calcular Centralidade</button>
+                    <button id="bt_graph" type="button">Inserir Grafo Padrao</button>
+                    <button id="bt_draw" type="button">Desenhar grafo</button>
+                </form>
+            </div>
+
+            <div id="return">
+            </div>
         </div>
 
-        <div id="return" style="height: 400px; overflow-y: scroll; margin-top: 20px;">
+        <div id="right">
+            <div id="mynetwork"></div>
         </div>
     </div>
-
-    <div id="right">
-        Graph drawing:
-        <div id="mynetwork"></div>
-    </div>
-</div>
 </body>
 
 <script type="text/javascript">
-    var id = Math.random().toString(36).substring(7);
-    var connection = new WebSocket('ws://localhost:8080/calculate?id='+id);
+    var connection = new WebSocket('ws://localhost:8080/chat?name=test');
     var newDate = new Date();
     var network;
 
@@ -71,13 +69,6 @@
 
     // Log messages from the server
     connection.onmessage = function (e) {
-
-        // check if this is not a keep alive message
-        if (e.data.length == 0) {
-            return;
-        }
-
-        // get the message and add a date, writing to the output log.
         newDate = new Date();
         var div = document.getElementById('return');
         div.innerHTML = newDate+ ': '+ e.data + '<br>' + div.innerHTML ;
@@ -135,13 +126,11 @@
 
         // for each line
         for (var i = 0; i < lines.length; i++) {
-            if (lines[i].length>0) {
-                var ns = lines[i].split(" ");
-                nodes[ns[0]] = {id: ns[0], label: ns[0]};
-                nodes[ns[1]] = {id: ns[1], label: ns[1]};
+            var ns = lines[i].split(" ");
+            nodes[ns[0]] = {id: ns[0], label: ns[0]};
+            nodes[ns[1]] = {id: ns[1], label: ns[1]};
 
-                edges[ns[0]+'-'+ns[1]] = {from: ns[0], to: ns[1]};
-            }
+            edges[ns[0]+'-'+ns[1]] = {from: ns[0], to: ns[1]};
         }
 
         // create a network

@@ -1,7 +1,5 @@
 package awa.ws
 
-
-
 import akka.actor._
 import akka.stream.OverflowStrategy
 import akka.stream.scaladsl._
@@ -9,7 +7,7 @@ import awa.graph._
 
 import scala.collection.immutable.ListMap
 import scala.util.matching.Regex
-
+import scala.concurrent.duration._
 
 
 trait GraphCalculus {
@@ -21,45 +19,68 @@ trait GraphCalculus {
 
 object GraphCalculus {
   def create(system: ActorSystem): GraphCalculus = {
-    // The implementation uses a single actor per chat to collect and distribute
-    // chat messages. It would be nicer if this could be built by stream operations
+    // The implementation uses a single actor to collect and distribute
+    // messages. It would be nicer if this could be built by stream operations
     // directly.
     val masterActor =
       system.actorOf(Props(new Actor {
+        import context._
+
         var subscribers = Set.empty[(String, ActorRef)]
 
+        // timeout websockets
+        context.system.scheduler.schedule(0 milliseconds, 50 seconds) {
+          dispatch("")
+        }
+
         def receive: Receive = {
+          // a new participant joins the calculus
           case NewParticipant(name, subscriber) ⇒
             context.watch(subscriber)
             subscribers += (name -> subscriber)
-            dispatch( "Joined: " + name + "-" +members)
-          case msg: ReceivedMessage      ⇒ dispatch(msg.toChatMessage)
-          case msg: String ⇒ dispatch(msg)
-          case ParticipantLeft(person) ⇒
+            //dispatch( "Joined: " + name + "-" +members)
+
+          // a simple message was received. Send to the others in the room
+          case msg: ReceivedMessage => dispatch(msg.toChatMessage)
+
+          // send a simple message to others
+          case msg: String => dispatch(msg)
+
+          // somebody legft the room
+          case ParticipantLeft(person) =>
             val entry @ (name, ref) = subscribers.find(_._1 == person).get
             // report downstream of completion, otherwise, there's a risk of leaking the
             // downstream when the TCP connection is only half-closed
             ref ! Status.Success(Unit)
             subscribers -= entry
             dispatch( "Left:" + person + "-" + members)
-          case Terminated(sub) ⇒
+
+          // terminate participants
+          case Terminated(sub) =>
             // clean up dead subscribers, but should have been removed when `ParticipantLeft`
             subscribers = subscribers.filterNot(_._2 == sub)
+
+          // commands received.
           case ReceivedCommand(command, text) =>
             command match {
               case "#start#" => {
                 // create the graph and read the info
                 val g = new Graph()
-                g.createGraphFromText(text)
-                var result = Map[Int, Float]()
+                if (g.createGraphFromText(text)) {
+                  var result = Map[Int, Float]()
 
-                for (n <- g.nodes) {
-                  val sh = g.findShortest(n._1)
-                  result += (n._1 -> sh)
+                  // calculate the shortest paths for each node
+                  for (n <- g.nodes) {
+                    val sh = g.findShortest(n._1)
+                    result += (n._1 -> sh)
+                  }
+
+                  // sort the nodes
+                  val sortedShortest = ListMap(result.toSeq.sortBy(-_._2):_*)
+                  dispatch(s"RESULT: ${sortedShortest.head}")
+                } else {
+                  dispatch("Error creating graph. Please check.")
                 }
-
-                val sortedShortest = ListMap(result.toSeq.sortBy(-_._2):_*)
-                dispatch(s"RESULT: ${sortedShortest.head}")
               }
               case "#stop#" => dispatch("STOPED CALCULUS:" + command + " - " + text)
               case _ => dispatch("UNK CALCULUS:" + command + " - " + text)
@@ -67,7 +88,6 @@ object GraphCalculus {
           }
 
         }
-        def sendAdminMessage(msg: String): Unit = dispatch("admin:"+msg)
         def dispatch(msg: String): Unit = subscribers.foreach(_._2 ! msg)
         def members = subscribers.map(_._1).toSeq
       }))

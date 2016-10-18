@@ -8,7 +8,7 @@ in the root folder
     sbt
     > run
 
-After the dependencies are downloadedm the server will start on port 8080.
+After the dependencies are downloaded the server will start on port 8080.
 
 The webpage allows the user to insert a graph, based on the edge relations (presented below), draw the graph and calculate centralities measures.
 
